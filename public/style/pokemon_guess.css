@@ -73,13 +73,67 @@ body {
 
 .hidden { display: none !important; }
 
+/* ── Difficulté ──────────────────────────────────────────────────────────── */
+.difficulty-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+}
+
+.diff-label {
+    color: #666;
+    font-size: 0.83rem;
+}
+
+.diff-btn {
+    padding: 8px 18px;
+    border-radius: 22px;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    background: transparent;
+    color: #666;
+    font-size: 0.85rem;
+    cursor: pointer;
+    line-height: 1.3;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    text-align: center;
+}
+
+.diff-btn small {
+    display: block;
+    font-size: 0.7rem;
+    opacity: 0.75;
+    margin-top: 2px;
+}
+
+.diff-btn.diff-active {
+    border-color: #FFCC00;
+    color: #FFCC00;
+    background: rgba(255, 204, 0, 0.1);
+}
+
+.diff-btn:hover:not(.diff-active) {
+    border-color: rgba(255, 255, 255, 0.35);
+    color: #bbb;
+}
+
 /* ── Image ───────────────────────────────────────────────────────────────── */
 .image-section {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     margin-bottom: 18px;
+}
+
+.image-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .pokemon-frame {
@@ -109,6 +163,17 @@ body {
     font-size: 0.82rem;
     font-weight: 700;
     letter-spacing: 0.5px;
+}
+
+.rarity-badge {
+    background: rgba(180, 120, 255, 0.15);
+    border: 1px solid rgba(180, 120, 255, 0.4);
+    color: #c084fc;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
 }
 
 /* ── Dots ────────────────────────────────────────────────────────────────── */
