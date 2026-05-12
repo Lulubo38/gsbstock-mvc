@@ -83,10 +83,10 @@ body {
 }
 
 .pokemon-frame {
-    width: 280px;
-    height: 280px;
+    width: 220px;
+    height: 308px; /* ratio carte TCG : 2.5 × 3.5 pouces */
     overflow: hidden;
-    border-radius: 20px;
+    border-radius: 16px;
     border: 4px solid #FFCC00;
     background: linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 100%);
     box-shadow: 0 0 48px rgba(255, 204, 0, 0.2), inset 0 0 24px rgba(0, 0, 0, 0.6);

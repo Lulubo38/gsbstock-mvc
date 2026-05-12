@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <title>PokéGuess - Devine le Pokémon !</title>
+    <title>PokéGuess - Devine la carte Pokémon !</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="./style/pokemon_guess.css">
@@ -10,7 +10,7 @@
     <div class="game-wrapper">
         <header class="game-header">
             <h1>PokéGuess</h1>
-            <p class="subtitle">Devine le Pokémon à partir d'un extrait de son artwork !</p>
+            <p class="subtitle">Devine le Pokémon à partir d'un extrait de sa carte TCG !</p>
             <?php if (isset($_SESSION['id'])): ?>
             <a href="index.php?uc=dashboard" class="back-link">← Retour au dashboard</a>
             <?php endif; ?>
@@ -18,15 +18,15 @@
 
         <div id="loading" class="loading">
             <div class="loading-spinner"></div>
-            <p>Chargement du Pokémon...</p>
+            <p>Chargement de la carte...</p>
         </div>
 
         <div id="game-area" class="hidden">
 
-            <!-- Image avec révélation progressive -->
+            <!-- Carte avec révélation progressive -->
             <div class="image-section">
                 <div class="pokemon-frame">
-                    <img id="pokemon-img" src="" alt="Pokémon mystère" class="pokemon-img">
+                    <img id="pokemon-img" src="" alt="Carte Pokémon mystère" class="pokemon-img">
                 </div>
                 <div id="attempts-badge" class="attempts-badge">Tentative 1 / 6</div>
             </div>
@@ -64,14 +64,15 @@
             <!-- Résultat final -->
             <div id="result-area" class="result-area hidden">
                 <div id="result-message"></div>
-                <button id="new-game-btn" class="new-game-btn">Nouveau Pokémon</button>
+                <button id="new-game-btn" class="new-game-btn">Nouvelle carte</button>
             </div>
 
         </div>
     </div>
 
     <script>
-    // ── Données Gen 1 (noms FR + EN pour autocomplétion offline) ──────────────
+    // ── Données Gen 1 ─────────────────────────────────────────────────────────
+    // tcg: nom exact tel qu'utilisé dans l'API Pokémon TCG (uniquement si différent de capitalize(en))
     const POKEMON_GEN1 = [
         {id:1,en:'bulbasaur',fr:'Bulbizarre'},{id:2,en:'ivysaur',fr:'Herbizarre'},
         {id:3,en:'venusaur',fr:'Florizarre'},{id:4,en:'charmander',fr:'Salamèche'},
@@ -87,18 +88,19 @@
         {id:23,en:'ekans',fr:'Abo'},{id:24,en:'arbok',fr:'Arbok'},
         {id:25,en:'pikachu',fr:'Pikachu'},{id:26,en:'raichu',fr:'Raichu'},
         {id:27,en:'sandshrew',fr:'Sabelette'},{id:28,en:'sandslash',fr:'Sablaireau'},
-        {id:29,en:'nidoran-f',fr:'Nidoran♀'},{id:30,en:'nidorina',fr:'Nidorina'},
-        {id:31,en:'nidoqueen',fr:'Nidoqueen'},{id:32,en:'nidoran-m',fr:'Nidoran♂'},
+        {id:29,en:'nidoran-f',fr:'Nidoran♀',tcg:'Nidoran♀'},
+        {id:30,en:'nidorina',fr:'Nidorina'},{id:31,en:'nidoqueen',fr:'Nidoqueen'},
+        {id:32,en:'nidoran-m',fr:'Nidoran♂',tcg:'Nidoran♂'},
         {id:33,en:'nidorino',fr:'Nidorino'},{id:34,en:'nidoking',fr:'Nidoking'},
         {id:35,en:'clefairy',fr:'Mélofée'},{id:36,en:'clefable',fr:'Mélodelfe'},
-        {id:37,en:'vulpix',fr:'Goupix'},{id:38,en:'ninetales',fr:'Feunard'},
+        {id:37,en:'vulpix',fr:'Goupix'},{id:38,en:'ninetales',fr:'Ninetales'},
         {id:39,en:'jigglypuff',fr:'Rondoudou'},{id:40,en:'wigglytuff',fr:'Grodoudou'},
         {id:41,en:'zubat',fr:'Nosferapti'},{id:42,en:'golbat',fr:'Nosferalto'},
         {id:43,en:'oddish',fr:'Mystherbe'},{id:44,en:'gloom',fr:'Ortide'},
         {id:45,en:'vileplume',fr:'Rafflesia'},{id:46,en:'paras',fr:'Paras'},
         {id:47,en:'parasect',fr:'Parasect'},{id:48,en:'venonat',fr:'Mimitoss'},
         {id:49,en:'venomoth',fr:'Aéromite'},{id:50,en:'diglett',fr:'Taupiqueur'},
-        {id:51,en:'dugtrio',fr:'Triopikeur'},{id:52,en:'meowth',fr:'Miaouss'},
+        {id:51,en:'dugtrio',fr:'Triopikeur'},{id:52,en:'meowth',fr:'Meowth'},
         {id:53,en:'persian',fr:'Persian'},{id:54,en:'psyduck',fr:'Psykokwak'},
         {id:55,en:'golduck',fr:'Akwakwak'},{id:56,en:'mankey',fr:'Férosinge'},
         {id:57,en:'primeape',fr:'Colossinge'},{id:58,en:'growlithe',fr:'Caninos'},
@@ -114,26 +116,27 @@
         {id:77,en:'ponyta',fr:'Ponyta'},{id:78,en:'rapidash',fr:'Galopa'},
         {id:79,en:'slowpoke',fr:'Ramoloss'},{id:80,en:'slowbro',fr:'Flagadoss'},
         {id:81,en:'magnemite',fr:'Magnéti'},{id:82,en:'magneton',fr:'Magnéton'},
-        {id:83,en:'farfetchd',fr:'Canarticho'},{id:84,en:'doduo',fr:'Doduo'},
-        {id:85,en:'dodrio',fr:'Dodrio'},{id:86,en:'seel',fr:'Otaria'},
-        {id:87,en:'dewgong',fr:'Lamantine'},{id:88,en:'grimer',fr:'Tadmorv'},
-        {id:89,en:'muk',fr:'Grotadmorv'},{id:90,en:'shellder',fr:'Kokiyas'},
-        {id:91,en:'cloyster',fr:'Crustabri'},{id:92,en:'gastly',fr:'Fantominus'},
-        {id:93,en:'haunter',fr:'Spectrum'},{id:94,en:'gengar',fr:'Ectoplasma'},
-        {id:95,en:'onix',fr:'Onix'},{id:96,en:'drowzee',fr:'Soporifik'},
-        {id:97,en:'hypno',fr:'Hypnomade'},{id:98,en:'krabby',fr:'Krabby'},
-        {id:99,en:'kingler',fr:'Krabboss'},{id:100,en:'voltorb',fr:'Voltorbe'},
-        {id:101,en:'electrode',fr:'Électrode'},{id:102,en:'exeggcute',fr:'Noeunoeuf'},
-        {id:103,en:'exeggutor',fr:'Noadkoko'},{id:104,en:'cubone',fr:'Osselait'},
-        {id:105,en:'marowak',fr:'Ossatueur'},{id:106,en:'hitmonlee',fr:'Kicklee'},
-        {id:107,en:'hitmonchan',fr:'Tygnon'},{id:108,en:'lickitung',fr:'Excelangue'},
-        {id:109,en:'koffing',fr:'Smogo'},{id:110,en:'weezing',fr:'Smogogo'},
-        {id:111,en:'rhyhorn',fr:'Rhinocorne'},{id:112,en:'rhydon',fr:'Rhinoféros'},
-        {id:113,en:'chansey',fr:'Leveinard'},{id:114,en:'tangela',fr:'Saquedeneu'},
-        {id:115,en:'kangaskhan',fr:'Kangaskhan'},{id:116,en:'horsea',fr:'Hypotrempe'},
-        {id:117,en:'seadra',fr:'Hypocéan'},{id:118,en:'goldeen',fr:'Poissirène'},
-        {id:119,en:'seaking',fr:'Poissoroy'},{id:120,en:'staryu',fr:'Stari'},
-        {id:121,en:'starmie',fr:'Staross'},{id:122,en:'mr-mime',fr:'M. Mime'},
+        {id:83,en:'farfetchd',fr:'Canarticho',tcg:"Farfetch'd"},
+        {id:84,en:'doduo',fr:'Doduo'},{id:85,en:'dodrio',fr:'Dodrio'},
+        {id:86,en:'seel',fr:'Otaria'},{id:87,en:'dewgong',fr:'Lamantine'},
+        {id:88,en:'grimer',fr:'Tadmorv'},{id:89,en:'muk',fr:'Grotadmorv'},
+        {id:90,en:'shellder',fr:'Kokiyas'},{id:91,en:'cloyster',fr:'Crustabri'},
+        {id:92,en:'gastly',fr:'Fantominus'},{id:93,en:'haunter',fr:'Spectrum'},
+        {id:94,en:'gengar',fr:'Ectoplasma'},{id:95,en:'onix',fr:'Onix'},
+        {id:96,en:'drowzee',fr:'Soporifik'},{id:97,en:'hypno',fr:'Hypnomade'},
+        {id:98,en:'krabby',fr:'Krabby'},{id:99,en:'kingler',fr:'Krabboss'},
+        {id:100,en:'voltorb',fr:'Voltorbe'},{id:101,en:'electrode',fr:'Électrode'},
+        {id:102,en:'exeggcute',fr:'Noeunoeuf'},{id:103,en:'exeggutor',fr:'Noadkoko'},
+        {id:104,en:'cubone',fr:'Osselait'},{id:105,en:'marowak',fr:'Ossatueur'},
+        {id:106,en:'hitmonlee',fr:'Kicklee'},{id:107,en:'hitmonchan',fr:'Tygnon'},
+        {id:108,en:'lickitung',fr:'Excelangue'},{id:109,en:'koffing',fr:'Smogo'},
+        {id:110,en:'weezing',fr:'Smogogo'},{id:111,en:'rhyhorn',fr:'Rhinocorne'},
+        {id:112,en:'rhydon',fr:'Rhinoféros'},{id:113,en:'chansey',fr:'Leveinard'},
+        {id:114,en:'tangela',fr:'Saquedeneu'},{id:115,en:'kangaskhan',fr:'Kangaskhan'},
+        {id:116,en:'horsea',fr:'Hypotrempe'},{id:117,en:'seadra',fr:'Hypocéan'},
+        {id:118,en:'goldeen',fr:'Poissirène'},{id:119,en:'seaking',fr:'Poissoroy'},
+        {id:120,en:'staryu',fr:'Stari'},{id:121,en:'starmie',fr:'Staross'},
+        {id:122,en:'mr-mime',fr:'M. Mime',tcg:'Mr. Mime'},
         {id:123,en:'scyther',fr:'Insécateur'},{id:124,en:'jynx',fr:'Lippoutou'},
         {id:125,en:'electabuzz',fr:'Élektek'},{id:126,en:'magmar',fr:'Magmar'},
         {id:127,en:'pinsir',fr:'Scarabrute'},{id:128,en:'tauros',fr:'Tauros'},
@@ -151,43 +154,50 @@
         {id:151,en:'mew',fr:'Mew'}
     ];
 
+    // Types TCG (capitalisés) + PokéAPI (minuscules, fallback)
     const TYPE_FR = {
-        normal:'Normal', fire:'Feu', water:'Eau', electric:'Électrik',
-        grass:'Plante', ice:'Glace', fighting:'Combat', poison:'Poison',
-        ground:'Sol', flying:'Vol', psychic:'Psy', bug:'Insecte',
-        rock:'Roche', ghost:'Spectre', dragon:'Dragon', dark:'Ténèbres',
-        steel:'Acier', fairy:'Fée'
+        // Pokémon TCG API
+        Fire:'Feu', Water:'Eau', Grass:'Plante', Lightning:'Électrik',
+        Psychic:'Psy', Fighting:'Combat', Darkness:'Ténèbres', Metal:'Acier',
+        Dragon:'Dragon', Fairy:'Fée', Colorless:'Incolore',
+        // PokéAPI (fallback si pas de carte TCG)
+        fire:'Feu', water:'Eau', grass:'Plante', electric:'Électrik',
+        psychic:'Psy', fighting:'Combat', dark:'Ténèbres', steel:'Acier',
+        dragon:'Dragon', fairy:'Fée', normal:'Normal', ice:'Glace',
+        poison:'Poison', ground:'Sol', flying:'Vol', bug:'Insecte',
+        rock:'Roche', ghost:'Spectre',
     };
 
-    // Zoom progressif : de très zoomé (scale 4) à image complète (scale 1)
+    // Zoom progressif : depuis l'intérieur de l'illustration jusqu'à la carte complète
     const STAGES = [4, 3, 2, 1.5, 1.2, 1];
     const MAX_ATTEMPTS = 6;
 
     const state = {
-        pokemon: null,
-        types: [],
-        attempts: 0,
+        pokemon:   null,
+        types:     [],
+        imageUrl:  '',
+        attempts:  0,
         wrongGuesses: [],
-        gameOver: false,
+        gameOver:  false,
         cropX: 50,
-        cropY: 50,
+        cropY: 38,
     };
 
     const $  = id => document.getElementById(id);
-    const $img         = $('pokemon-img');
-    const $input       = $('guess-input');
-    const $submit      = $('submit-btn');
-    const $skip        = $('skip-btn');
-    const $ac          = $('autocomplete-list');
-    const $hintsArea   = $('hints-area');
-    const $hintsList   = $('hints-list');
-    const $wrongList   = $('wrong-list');
-    const $resultArea  = $('result-area');
-    const $resultMsg   = $('result-message');
-    const $loading     = $('loading');
-    const $gameArea    = $('game-area');
-    const $dots        = $('attempt-dots');
-    const $badge       = $('attempts-badge');
+    const $img        = $('pokemon-img');
+    const $input      = $('guess-input');
+    const $submit     = $('submit-btn');
+    const $skip       = $('skip-btn');
+    const $ac         = $('autocomplete-list');
+    const $hintsArea  = $('hints-area');
+    const $hintsList  = $('hints-list');
+    const $wrongList  = $('wrong-list');
+    const $resultArea = $('result-area');
+    const $resultMsg  = $('result-message');
+    const $loading    = $('loading');
+    const $gameArea   = $('game-area');
+    const $dots       = $('attempt-dots');
+    const $badge      = $('attempts-badge');
 
     // ── Initialisation ─────────────────────────────────────────────────────────
     async function initGame() {
@@ -198,25 +208,40 @@
             attempts: 0,
             wrongGuesses: [],
             gameOver: false,
-            cropX: 30 + Math.random() * 40,
-            cropY: 30 + Math.random() * 40,
+            // Crop dans la zone illustration (≈ 12-58% verticalement sur une carte standard)
+            // On évite le haut (nom) et le bas (attaques/texte)
+            cropX: 35 + Math.random() * 30,   // 35-65 % horizontal
+            cropY: 28 + Math.random() * 14,   // 28-42 % vertical
         });
 
         try {
             state.pokemon = POKEMON_GEN1[Math.floor(Math.random() * POKEMON_GEN1.length)];
+            const tcgName = state.pokemon.tcg
+                || (state.pokemon.en.charAt(0).toUpperCase() + state.pokemon.en.slice(1));
 
-            const res  = await fetch(`https://pokeapi.co/api/v2/pokemon/${state.pokemon.id}`);
-            const data = await res.json();
-            state.types = data.types.map(t => t.type.name);
+            // ── Appel Pokémon TCG API ──────────────────────────────────────────
+            const tcgRes  = await fetch(
+                `https://api.pokemontcg.io/v2/cards?q=name:"${encodeURIComponent(tcgName)}"&pageSize=20&select=id,name,images,types`
+            );
+            const tcgData = await tcgRes.json();
 
-            const artwork = data.sprites.other['official-artwork'].front_default
-                || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${state.pokemon.id}.png`;
+            if (tcgData.data && tcgData.data.length > 0) {
+                const card     = tcgData.data[Math.floor(Math.random() * tcgData.data.length)];
+                state.imageUrl = card.images.large || card.images.small;
+                state.types    = card.types || [];
+            } else {
+                // Fallback : artwork officiel PokéAPI si aucune carte TCG trouvée
+                const pkRes  = await fetch(`https://pokeapi.co/api/v2/pokemon/${state.pokemon.id}`);
+                const pkData = await pkRes.json();
+                state.imageUrl = pkData.sprites.other['official-artwork'].front_default;
+                state.types    = pkData.types.map(t => t.type.name);
+            }
 
-            $img.src = artwork;
+            $img.src = state.imageUrl;
             applyZoom(0);
 
-            $hintsList.innerHTML   = '';
-            $wrongList.innerHTML   = '';
+            $hintsList.innerHTML  = '';
+            $wrongList.innerHTML  = '';
             $hintsArea.classList.add('hidden');
             $resultArea.classList.add('hidden');
             $input.value     = '';
@@ -271,7 +296,7 @@
     function submitGuess(guess) {
         if (state.gameOver || !guess.trim()) return;
 
-        const input   = normalize(guess);
+        const input    = normalize(guess);
         const answerEn = normalize(state.pokemon.en);
         const answerFr = normalize(state.pokemon.fr);
 
@@ -290,7 +315,7 @@
                 $badge.textContent = `Tentative ${state.attempts + 1} / ${MAX_ATTEMPTS}`;
                 // Indices à partir de la 3e erreur
                 const hints = [
-                    `Type : ${state.types.map(t => TYPE_FR[t] || t).join(' / ')}`,
+                    `Type TCG : ${state.types.map(t => TYPE_FR[t] || t).join(' / ')}`,
                     `Génération : I (Kanto)`,
                     `Première lettre : ${state.pokemon.fr[0].toUpperCase()}`,
                 ];
