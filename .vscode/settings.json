@@ -1,0 +1,26 @@
+{
+    "php.validate.executablePath": "/usr/bin/php",
+    "php.suggest.basic": false,
+
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.rulers": [120],
+
+    "files.associations": {
+        "*.php": "php"
+    },
+
+    "emmet.includeLanguages": {
+        "php": "html"
+    },
+
+    "files.exclude": {
+        "**/.git": true,
+        "**/.DS_Store": true
+    },
+
+    "search.exclude": {
+        "**/.git": true
+    }
+}
