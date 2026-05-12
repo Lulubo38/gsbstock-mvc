@@ -9,7 +9,10 @@
 <body>
     <div class="game-wrapper">
         <header class="game-header">
-            <h1>PokéGuess</h1>
+            <div class="header-top">
+                <h1>PokéGuess</h1>
+                <div id="streak-display" class="streak hidden">🔥 <span id="streak-count">0</span></div>
+            </div>
             <p class="subtitle">Devine le Pokémon à partir d'un extrait de sa carte TCG !</p>
             <?php if (isset($_SESSION['id'])): ?>
             <a href="index.php?uc=dashboard" class="back-link">← Retour au dashboard</a>
@@ -29,17 +32,25 @@
             </button>
         </div>
 
+        <!-- État : chargement -->
         <div id="loading" class="loading">
             <div class="loading-spinner"></div>
             <p id="loading-text">Chargement de la carte...</p>
         </div>
 
+        <!-- État : erreur réseau -->
+        <div id="error-state" class="error-state hidden">
+            <p id="error-msg">Impossible de charger la carte.</p>
+            <button id="retry-btn" class="new-game-btn">Réessayer</button>
+        </div>
+
         <div id="game-area" class="hidden">
 
-            <!-- Carte avec révélation progressive -->
             <div class="image-section">
-                <div class="pokemon-frame">
-                    <img id="pokemon-img" src="" alt="Carte Pokémon mystère" class="pokemon-img">
+                <!-- Le cadre a son propre loader tant que l'image n'est pas prête -->
+                <div class="pokemon-frame" id="pokemon-frame">
+                    <div id="card-skeleton" class="card-skeleton"></div>
+                    <img id="pokemon-img" src="" alt="Carte Pokémon mystère" class="pokemon-img hidden">
                 </div>
                 <div class="image-meta">
                     <div id="attempts-badge" class="attempts-badge">Tentative 1 / 6</div>
@@ -47,16 +58,13 @@
                 </div>
             </div>
 
-            <!-- Points de tentatives -->
             <div class="attempt-dots" id="attempt-dots"></div>
 
-            <!-- Indices textuels (apparaissent après 3 erreurs) -->
             <div id="hints-area" class="hints-area hidden">
                 <h3>Indices</h3>
                 <ul id="hints-list"></ul>
             </div>
 
-            <!-- Saisie + autocomplétion -->
             <div class="input-section">
                 <div class="autocomplete-wrapper">
                     <input
@@ -65,19 +73,18 @@
                         placeholder="Nom du Pokémon..."
                         autocomplete="off"
                         spellcheck="false"
+                        maxlength="50"
                     >
-                    <div id="autocomplete-list" class="autocomplete-list hidden"></div>
+                    <div id="autocomplete-list" class="autocomplete-list hidden" role="listbox"></div>
                 </div>
                 <button id="submit-btn" class="submit-btn">Valider</button>
                 <button id="skip-btn" class="skip-btn">Passer</button>
             </div>
 
-            <!-- Mauvaises réponses -->
             <div class="wrong-guesses">
                 <div id="wrong-list"></div>
             </div>
 
-            <!-- Résultat final -->
             <div id="result-area" class="result-area hidden">
                 <div id="result-message"></div>
                 <button id="new-game-btn" class="new-game-btn">Nouvelle carte</button>
@@ -87,7 +94,7 @@
     </div>
 
     <script>
-    // ── Données Gen 1 ─────────────────────────────────────────────────────────
+    // ── Données Gen 1 (hardcodé pour éviter un appel API supplémentaire) ──────
     const POKEMON_GEN1 = [
         {id:1,en:'bulbasaur',fr:'Bulbizarre'},{id:2,en:'ivysaur',fr:'Herbizarre'},
         {id:3,en:'venusaur',fr:'Florizarre'},{id:4,en:'charmander',fr:'Salamèche'},
@@ -169,35 +176,18 @@
         {id:151,en:'mew',fr:'Mew'}
     ];
 
-    // ── Raretés ultra (mode Normal) ────────────────────────────────────────────
-    // Toutes les cartes spéciales / holo rares de l'API Pokémon TCG
     const ULTRA_RARE = new Set([
-        // Ères EX / ex
-        'Rare Holo EX', 'Rare Ultra',
-        // GX
-        'Rare Holo GX',
-        // V, VMAX, VSTAR
-        'Rare Holo V', 'Rare Holo VMAX', 'Rare Holo VSTAR',
-        // Lv.X
-        'Rare Holo LV.X',
-        // Prime, Legend (HGSS)
-        'Rare Prime', 'LEGEND',
-        // Secret / Ultra rares modernes
-        'Ultra Rare', 'Secret Rare', 'Rare Secret',
-        // Full Art / Illustration rares modernes
-        'Special Illustration Rare', 'Illustration Rare',
-        'Double Rare', 'Hyper Rare',
-        // Amazing / Radiant
-        'Amazing Rare', 'Radiant Rare',
-        // Shining / Star (anciens)
-        'Rare Shining', 'Rare Holo Star',
-        // Divers
-        'Rare BREAK', 'Rare ACE', 'ACE SPEC Rare',
-        'Shiny Rare', 'Shiny Ultra Rare',
-        'Trainer Gallery Rare Holo', 'Classic Collection',
+        'Rare Holo EX','Rare Ultra','Rare Holo GX',
+        'Rare Holo V','Rare Holo VMAX','Rare Holo VSTAR',
+        'Rare Holo LV.X','Rare Prime','LEGEND',
+        'Ultra Rare','Secret Rare','Rare Secret',
+        'Special Illustration Rare','Illustration Rare',
+        'Double Rare','Hyper Rare','Amazing Rare','Radiant Rare',
+        'Rare Shining','Rare Holo Star','Rare BREAK','Rare ACE',
+        'ACE SPEC Rare','Shiny Rare','Shiny Ultra Rare',
+        'Trainer Gallery Rare Holo','Classic Collection',
     ]);
 
-    // Types TCG (capitalisés) + PokéAPI (minuscules, fallback)
     const TYPE_FR = {
         Fire:'Feu', Water:'Eau', Grass:'Plante', Lightning:'Électrik',
         Psychic:'Psy', Fighting:'Combat', Darkness:'Ténèbres', Metal:'Acier',
@@ -209,11 +199,17 @@
         rock:'Roche', ghost:'Spectre',
     };
 
-    const STAGES      = [4, 3, 2, 1.5, 1.2, 1];
+    const STAGES     = [4, 3, 2, 1.5, 1.2, 1];
     const MAX_ATTEMPTS = 6;
-    const MAX_RETRY    = 6; // essais max si aucune carte eligible trouvée
+    const MAX_RETRY    = 6;
 
-    let difficulty = 'normal'; // 'normal' | 'hard'
+    // ── Cache mémoire pour éviter de refetch la même carte ────────────────────
+    // Map<pokemonId, { imageUrl, types, rarity }[]>
+    const cardCache = new Map();
+
+    let difficulty = 'normal';
+    let streak     = 0;
+    let acIndex    = -1; // index actif dans l'autocomplétion (navigation clavier)
 
     const state = {
         pokemon:  null,
@@ -227,32 +223,36 @@
         cropY: 38,
     };
 
-    const $  = id => document.getElementById(id);
-    const $img        = $('pokemon-img');
-    const $input      = $('guess-input');
-    const $submit     = $('submit-btn');
-    const $skip       = $('skip-btn');
-    const $ac         = $('autocomplete-list');
-    const $hintsArea  = $('hints-area');
-    const $hintsList  = $('hints-list');
-    const $wrongList  = $('wrong-list');
-    const $resultArea = $('result-area');
-    const $resultMsg  = $('result-message');
-    const $loading    = $('loading');
-    const $loadingTxt = $('loading-text');
-    const $gameArea   = $('game-area');
-    const $dots       = $('attempt-dots');
-    const $badge      = $('attempts-badge');
-    const $rarityBadge= $('rarity-badge');
+    const $ = id => document.getElementById(id);
+    const $img         = $('pokemon-img');
+    const $input       = $('guess-input');
+    const $submit      = $('submit-btn');
+    const $skip        = $('skip-btn');
+    const $ac          = $('autocomplete-list');
+    const $hintsArea   = $('hints-area');
+    const $hintsList   = $('hints-list');
+    const $wrongList   = $('wrong-list');
+    const $resultArea  = $('result-area');
+    const $resultMsg   = $('result-message');
+    const $loading     = $('loading');
+    const $loadingTxt  = $('loading-text');
+    const $errorState  = $('error-state');
+    const $errorMsg    = $('error-msg');
+    const $gameArea    = $('game-area');
+    const $dots        = $('attempt-dots');
+    const $badge       = $('attempts-badge');
+    const $rarityBadge = $('rarity-badge');
+    const $skeleton    = $('card-skeleton');
+    const $streakEl    = $('streak-display');
+    const $streakCount = $('streak-count');
 
-    // ── Sélecteur de difficulté ────────────────────────────────────────────────
+    // ── Difficulté ─────────────────────────────────────────────────────────────
     function setDifficulty(level) {
         difficulty = level;
         $('diff-normal').classList.toggle('diff-active', level === 'normal');
         $('diff-hard').classList.toggle('diff-active', level === 'hard');
         initGame();
     }
-
     $('diff-normal').addEventListener('click', () => setDifficulty('normal'));
     $('diff-hard').addEventListener('click',   () => setDifficulty('hard'));
 
@@ -261,10 +261,11 @@
         if (retryCount === 0) {
             $loading.classList.remove('hidden');
             $gameArea.classList.add('hidden');
-            $loadingTxt.textContent = 'Chargement de la carte...';
-        } else {
-            $loadingTxt.textContent = `Recherche d'une carte ${difficulty === 'normal' ? 'rare' : ''}... (${retryCount}/${MAX_RETRY})`;
+            $errorState.classList.add('hidden');
         }
+        $loadingTxt.textContent = retryCount === 0
+            ? 'Chargement de la carte...'
+            : `Recherche d'une carte rare... (${retryCount}/${MAX_RETRY})`;
 
         Object.assign(state, {
             attempts: 0,
@@ -276,68 +277,119 @@
 
         try {
             state.pokemon = POKEMON_GEN1[Math.floor(Math.random() * POKEMON_GEN1.length)];
-            const tcgName = state.pokemon.tcg
-                || (state.pokemon.en.charAt(0).toUpperCase() + state.pokemon.en.slice(1));
 
-            // Récupère jusqu'à 100 cartes pour avoir un bon choix après filtrage
-            const tcgRes  = await fetch(
-                `https://api.pokemontcg.io/v2/cards?q=name:"${encodeURIComponent(tcgName)}"&pageSize=100&select=id,name,images,types,rarity`
-            );
-            const tcgData = await tcgRes.json();
-            const allCards = (tcgData.data || []).filter(c => c.images?.large || c.images?.small);
+            // ── Récupération des cartes (avec cache mémoire) ───────────────────
+            let pool = await fetchCards(state.pokemon);
 
-            // ── Filtrage par rareté selon la difficulté ────────────────────────
-            let pool;
             if (difficulty === 'normal') {
-                pool = allCards.filter(c => ULTRA_RARE.has(c.rarity));
-                if (pool.length === 0) {
-                    // Aucune carte ultra trouvée pour ce Pokémon → réessayer
-                    if (retryCount < MAX_RETRY) return initGame(retryCount + 1);
-                    // Abandon : on prend n'importe quelle carte
-                    pool = allCards;
+                const ultraPool = pool.filter(c => ULTRA_RARE.has(c.rarity));
+                if (ultraPool.length === 0 && retryCount < MAX_RETRY) {
+                    return initGame(retryCount + 1);
                 }
-            } else {
-                // Mode difficile : toutes les cartes disponibles
-                pool = allCards;
+                pool = ultraPool.length > 0 ? ultraPool : pool;
             }
 
             if (pool.length === 0) {
-                // Aucune carte du tout → fallback artwork PokéAPI
-                const pkRes  = await fetch(`https://pokeapi.co/api/v2/pokemon/${state.pokemon.id}`);
-                const pkData = await pkRes.json();
-                state.imageUrl = pkData.sprites.other['official-artwork'].front_default;
-                state.types    = pkData.types.map(t => t.type.name);
-                state.rarity   = '';
-            } else {
-                const card     = pool[Math.floor(Math.random() * pool.length)];
-                state.imageUrl = card.images.large || card.images.small;
-                state.types    = card.types || [];
-                state.rarity   = card.rarity || '';
+                showError('Aucune carte trouvée pour ce Pokémon.');
+                return;
             }
 
-            $img.src = state.imageUrl;
+            const card     = pool[Math.floor(Math.random() * pool.length)];
+            state.imageUrl = card.imageUrl;
+            state.types    = card.types;
+            state.rarity   = card.rarity;
+
+            // ── Attendre le chargement de l'image avant de révéler le jeu ─────
+            await loadImage(state.imageUrl);
+
             applyZoom(0);
-
-            // Remise à zéro de l'UI
-            $hintsList.innerHTML  = '';
-            $wrongList.innerHTML  = '';
-            $hintsArea.classList.add('hidden');
-            $resultArea.classList.add('hidden');
-            $rarityBadge.classList.add('hidden');
-            $input.value     = '';
-            $input.disabled  = false;
-            $submit.disabled = false;
-            $skip.disabled   = false;
-
-            renderDots();
-            $badge.textContent = `Tentative 1 / ${MAX_ATTEMPTS}`;
+            resetUI();
 
             $loading.classList.add('hidden');
             $gameArea.classList.remove('hidden');
 
         } catch (err) {
-            $loading.innerHTML = '<p>Erreur de chargement. Vérifie ta connexion internet.</p>';
+            console.error(err);
+            showError('Erreur réseau. Vérifie ta connexion internet.');
         }
+    }
+
+    // Fetch avec cache mémoire — retourne un tableau de { imageUrl, types, rarity }
+    async function fetchCards(pokemon) {
+        if (cardCache.has(pokemon.id)) return cardCache.get(pokemon.id);
+
+        const tcgName = pokemon.tcg
+            || (pokemon.en.charAt(0).toUpperCase() + pokemon.en.slice(1));
+
+        const res  = await fetch(
+            `https://api.pokemontcg.io/v2/cards?q=name:"${encodeURIComponent(tcgName)}"&pageSize=100&select=id,name,images,types,rarity`
+        );
+        if (!res.ok) throw new Error(`TCG API ${res.status}`);
+
+        const data  = await res.json();
+        const cards = (data.data || [])
+            .filter(c => c.images?.large || c.images?.small)
+            .map(c => ({
+                imageUrl: c.images.large || c.images.small,
+                types:    c.types  || [],
+                rarity:   c.rarity || '',
+            }));
+
+        // Fallback PokéAPI si aucune carte TCG
+        if (cards.length === 0) {
+            const pk   = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
+            if (!pk.ok) throw new Error(`PokéAPI ${pk.status}`);
+            const pkd  = await pk.json();
+            const fb = [{
+                imageUrl: pkd.sprites.other['official-artwork'].front_default,
+                types:    pkd.types.map(t => t.type.name),
+                rarity:   '',
+            }];
+            cardCache.set(pokemon.id, fb);
+            return fb;
+        }
+
+        cardCache.set(pokemon.id, cards);
+        return cards;
+    }
+
+    // Charge une image et résout la promise quand elle est prête
+    function loadImage(src) {
+        return new Promise((resolve, reject) => {
+            $skeleton.classList.remove('hidden');
+            $img.classList.add('hidden');
+            const tmp = new Image();
+            tmp.onload  = () => {
+                $img.src = src;
+                $img.classList.remove('hidden');
+                $skeleton.classList.add('hidden');
+                resolve();
+            };
+            tmp.onerror = () => reject(new Error(`Image introuvable : ${src}`));
+            tmp.src = src;
+        });
+    }
+
+    function showError(msg) {
+        $loading.classList.add('hidden');
+        $gameArea.classList.add('hidden');
+        $errorMsg.textContent = msg;
+        $errorState.classList.remove('hidden');
+    }
+
+    function resetUI() {
+        $hintsList.innerHTML  = '';
+        $wrongList.innerHTML  = '';
+        $hintsArea.classList.add('hidden');
+        $resultArea.classList.add('hidden');
+        $rarityBadge.classList.add('hidden');
+        $input.value     = '';
+        $input.disabled  = false;
+        $submit.disabled = false;
+        $skip.disabled   = false;
+        acIndex = -1;
+        renderDots();
+        $badge.textContent = `Tentative 1 / ${MAX_ATTEMPTS}`;
     }
 
     // ── Zoom CSS ───────────────────────────────────────────────────────────────
@@ -349,7 +401,7 @@
         $img.style.transform = `scale(${scale})`;
     }
 
-    // ── Points de tentatives ───────────────────────────────────────────────────
+    // ── Dots ───────────────────────────────────────────────────────────────────
     function renderDots() {
         $dots.innerHTML = '';
         for (let i = 0; i < MAX_ATTEMPTS; i++) {
@@ -368,9 +420,12 @@
         $hintsArea.classList.remove('hidden');
     }
 
-    // ── Soumission d'une réponse ───────────────────────────────────────────────
+    // ── Soumission ─────────────────────────────────────────────────────────────
+    // Supprime les diacritiques (accents) de façon fiable (Unicode NFD)
     function normalize(str) {
-        return str.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return str.trim().toLowerCase()
+            .normalize('NFD')
+            .replace(/[̀-ͯ]/g, ''); // plage unicode officielle des diacritiques
     }
 
     function submitGuess(guess) {
@@ -394,39 +449,50 @@
             } else {
                 $badge.textContent = `Tentative ${state.attempts + 1} / ${MAX_ATTEMPTS}`;
                 const hints = [
-                    `Type TCG : ${state.types.map(t => TYPE_FR[t] || t).join(' / ')}`,
-                    `Génération : I (Kanto)`,
-                    `Première lettre : ${state.pokemon.fr[0].toUpperCase()}`,
+                    `Type TCG : ${state.types.map(t => TYPE_FR[t] || t).join(' / ') || '?'}`,
+                    'Génération : I (Kanto)',
+                    `Première lettre : ${(state.pokemon.fr[0] || '?').toUpperCase()}`,
                 ];
-                const hintIdx = state.attempts - 3;
-                if (hintIdx >= 0 && hintIdx < hints.length) showHint(hints[hintIdx]);
+                const hi = state.attempts - 3;
+                if (hi >= 0 && hi < hints.length) showHint(hints[hi]);
             }
         }
 
         $input.value = '';
-        $ac.classList.add('hidden');
+        closeAC();
     }
 
     function endGame(win) {
         state.gameOver = true;
-        applyZoom(99);
+        applyZoom(STAGES.length); // révèle l'image complète
 
-        // Affiche la rareté de la carte une fois révélée
         if (state.rarity) {
             $rarityBadge.textContent = state.rarity;
             $rarityBadge.classList.remove('hidden');
         }
 
         if (win) {
+            streak++;
             const dot = $dots.querySelectorAll('.dot')[state.attempts];
             if (dot) dot.classList.add('correct');
             $resultMsg.innerHTML = `<span class="result-win">Bravo ! C'était <strong>${state.pokemon.fr}</strong> !</span>`;
         } else {
+            streak = 0;
             $resultMsg.innerHTML = `<span class="result-lose">Dommage ! C'était <strong>${state.pokemon.fr}</strong> (#${state.pokemon.id})</span>`;
         }
 
+        updateStreak();
         $resultArea.classList.remove('hidden');
         [$input, $submit, $skip].forEach(el => el.disabled = true);
+    }
+
+    function updateStreak() {
+        if (streak >= 2) {
+            $streakCount.textContent = streak;
+            $streakEl.classList.remove('hidden');
+        } else {
+            $streakEl.classList.add('hidden');
+        }
     }
 
     function appendWrongGuess(label) {
@@ -437,37 +503,72 @@
     }
 
     // ── Autocomplétion ─────────────────────────────────────────────────────────
-    $input.addEventListener('input', function () {
-        const val = normalize(this.value);
-        if (val.length < 1) { $ac.classList.add('hidden'); return; }
+    let acMatches = [];
 
-        const matches = POKEMON_GEN1.filter(p =>
-            normalize(p.fr).startsWith(val) || p.en.startsWith(val)
-        ).slice(0, 8);
+    function closeAC() {
+        $ac.classList.add('hidden');
+        acIndex = -1;
+    }
 
-        if (!matches.length) { $ac.classList.add('hidden'); return; }
-
+    function renderAC(matches) {
+        acMatches = matches;
+        acIndex = -1;
         $ac.innerHTML = '';
-        matches.forEach(p => {
+        matches.forEach((p, i) => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
+            div.setAttribute('role', 'option');
             div.textContent = p.fr;
             div.addEventListener('mousedown', e => {
                 e.preventDefault();
                 $input.value = p.fr;
-                $ac.classList.add('hidden');
+                closeAC();
                 submitGuess(p.fr);
             });
             $ac.appendChild(div);
         });
         $ac.classList.remove('hidden');
+    }
+
+    function highlightAC(newIdx) {
+        const items = $ac.querySelectorAll('.autocomplete-item');
+        items.forEach(el => el.classList.remove('ac-active'));
+        acIndex = Math.max(-1, Math.min(newIdx, items.length - 1));
+        if (acIndex >= 0) {
+            items[acIndex].classList.add('ac-active');
+            $input.value = acMatches[acIndex].fr;
+        }
+    }
+
+    $input.addEventListener('input', function () {
+        const val = normalize(this.value);
+        if (val.length < 1) { closeAC(); return; }
+
+        const matches = POKEMON_GEN1.filter(p =>
+            normalize(p.fr).startsWith(val) || p.en.startsWith(val)
+        ).slice(0, 8);
+
+        if (!matches.length) { closeAC(); return; }
+        renderAC(matches);
     });
 
-    $input.addEventListener('blur',    () => setTimeout(() => $ac.classList.add('hidden'), 150));
-    $input.addEventListener('keydown', e  => { if (e.key === 'Enter') { $ac.classList.add('hidden'); submitGuess($input.value); } });
+    $input.addEventListener('keydown', e => {
+        if ($ac.classList.contains('hidden')) {
+            if (e.key === 'Enter') submitGuess($input.value);
+            return;
+        }
+        if (e.key === 'ArrowDown')  { e.preventDefault(); highlightAC(acIndex + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); highlightAC(acIndex - 1); }
+        else if (e.key === 'Enter')   { e.preventDefault(); closeAC(); submitGuess($input.value); }
+        else if (e.key === 'Escape')  { closeAC(); }
+    });
+
+    $input.addEventListener('blur', () => setTimeout(closeAC, 150));
+
     $submit.addEventListener('click',  () => submitGuess($input.value));
     $skip.addEventListener('click',    () => { if (!state.gameOver) endGame(false); });
     $('new-game-btn').addEventListener('click', initGame);
+    $('retry-btn').addEventListener('click',    initGame);
 
     initGame();
     </script>
