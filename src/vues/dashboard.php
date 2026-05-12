@@ -21,7 +21,8 @@
         <?php if ($_SESSION['id_role'] != 1) : ?>
             <a href="index.php?uc=order&action=historique_utilisateur" class="historique-commande-btn">Historique des commandes</a>
         <?php endif; ?>
-        <a href="index.php?uc=populaire" class="produits-populaires-btn">Produits Populaires</a> <!-- Lien vers la page des produits populaires -->
+        <a href="index.php?uc=populaire" class="produits-populaires-btn">Produits Populaires</a>
+        <a href="index.php?uc=game" class="pokemon-game-btn">PokéGuess</a>
     </div>
 
     <label for="type">Afficher :</label>

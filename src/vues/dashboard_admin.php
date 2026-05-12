@@ -16,7 +16,8 @@
                 <li><a href="index.php?uc=logout">Déconnexion</a></li>
                 <li><a href="index.php?uc=order&action=historique-commande">Historique des commandes</a></li>
                 <li><a href="index.php?uc=stock&action=gerer_stock">Gérer les stocks</a></li>
-                <li><a href="index.php?uc=order&action=commande-mois">Commandes par mois</a></li> <!-- Ajout du lien vers la page de commandes par mois -->
+                <li><a href="index.php?uc=order&action=commande-mois">Commandes par mois</a></li>
+                <li><a href="index.php?uc=game">PokéGuess</a></li>
             </ul>
         </nav>
     </header>

@@ -83,6 +83,10 @@ switch ($uc) {
         }
         break;
 
+    case "game":
+        include "../src/vues/game/pokemon_guess.php";
+        break;
+
     case "logout":
         session_start();
         session_destroy();
