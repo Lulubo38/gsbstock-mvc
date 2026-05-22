@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "PokéTrade",
+    "slug": "pokemon-trade-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FFCC00"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pokemon.trade"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFCC00"
+      },
+      "package": "com.pokemon.trade"
+    }
+  }
+}
